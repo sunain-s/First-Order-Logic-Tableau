@@ -4,7 +4,25 @@ MAX_CONSTANTS = 10
 #------------------------------------------------------------------------------------------------------------------------------:
 # Helper Functions
 
-def main_connective(fmla) -> tuple[int, str]:
+def balanced_parentheses(fmla: str) -> bool:
+    depth = 0
+    for char in fmla:
+        if char == '(':
+            depth += 1
+        elif char == ')':
+            depth -= 1
+            if depth < 0:
+                return False
+    return depth == 0
+
+def main_connective(fmla: str) -> tuple[int|None, str|None]:
+    if not fmla:
+        return None, None
+    if fmla[0] != '(' or fmla[-1] != ')':
+        return None, None
+    if not balanced_parentheses(fmla):
+        return None, None
+
     depth = 0
     i = 0
     while i < len(fmla):
@@ -14,54 +32,107 @@ def main_connective(fmla) -> tuple[int, str]:
         elif char == ')':
             depth -= 1
 
-        # checking at highest level for the main connective
-        elif depth == 1:
-            if char == "&":
-                return i, "&"
-            elif char == "\\" and i + 1 < len(fmla) and fmla[i + 1] == "/":
-                return i, "\\/"
-            elif char == "-" and i + 1 < len(fmla) and fmla[i + 1] == ">":
-                return i, "->"
+        # Only check for main connective when at depth 1 (highest level) and not immediately after '('
+        if depth == 1 and fmla[i - 1] != '(' and i > 0:
+            if char == '-' and i + 1 < len(fmla) and fmla[i+1] == '>':
+                return i, '->'
+            if char == '\\' and i + 1 < len(fmla) and fmla[i+1] == '/':
+                return i, '\\/'
+            if char == '&':
+                return i, '&'
         i += 1
     return None, None
 
+def is_prop_atom(f: str) -> bool:
+    return f in ['p', 'q', 'r', 's']
+
+def is_fol_atom(f: str) -> bool:
+    # Must exactly match the pattern: CapitalLetter ( var , var )
+    if len(f) != 6:
+        return False
+    if f[0] not in ['P', 'Q', 'R', 'S']:
+        return False
+    if f[1] != '(' or f[3] != ',' or f[5] != ')':
+        return False
+    if f[2] not in ['x', 'y', 'z', 'w'] or f[4] not in ['x', 'y', 'z', 'w']:
+        return False
+    return True
 
 
 #------------------------------------------------------------------------------------------------------------------------------:
-# Testing Functions
+# Testing
+
+def test_balanced_parentheses():
+    assert balanced_parentheses('(P&Q)')
+    assert balanced_parentheses('((P\\/Q)->R)')
+    assert balanced_parentheses('(P->(Q&R))')
+    assert not balanced_parentheses('(P&(Q->R)')
+    assert not balanced_parentheses('P&Q)')
+    assert balanced_parentheses('((P&Q)->(R\\/S))')
+    print("Balanced Parentheses: All tests passed.\n")
+
 
 def test_main_connective():
     assert main_connective('(P&Q)') == (2, '&')
     assert main_connective('((P\\/Q)->R)') == (7, '->')
     assert main_connective('(P->(Q&R))') == (2, '->')
     assert main_connective('(P)') == (None, None)
-    assert main_connective('((P&Q)\\/ (R->S))') == (6, '\\/')
-    print("All tests passed.")
+    assert main_connective('((P&Q)\\/(R->S))') == (6, '\\/')
+    assert main_connective('p->q') == (None, None)          # no outer brackets
+    assert main_connective('') == (None, None)
+    print("Main Connective: All tests passed.\n")
 
+
+def test_is_prop_atom():
+    assert is_prop_atom('p')
+    assert is_prop_atom('q')
+    assert is_prop_atom('r')
+    assert is_prop_atom('s')
+    assert not is_prop_atom('P')
+    assert not is_prop_atom('x')
+    assert not is_prop_atom('(p&q)')
+    print("Propositional Atom: All tests passed.\n")
+
+
+def test_is_fol_atom():
+    assert is_fol_atom('P(x,y)')
+    assert is_fol_atom('Q(z,w)')
+    assert is_fol_atom('R(x,x)')
+    assert is_fol_atom('S(y,z)')
+    assert not is_fol_atom('P(x)')
+    assert not is_fol_atom('P(x,y,z)')
+    assert not is_fol_atom('P(a,b)')
+    assert not is_fol_atom('p')
+    assert not is_fol_atom('(P(x,y)&Q(z,w))')
+    print("First-Order Logic Atom: All tests passed.\n")
+
+test_balanced_parentheses()
 test_main_connective()
-print("================================\n\n\n")
+test_is_prop_atom()
+test_is_fol_atom()
+print("================================\n\n")
 
 #------------------------------------------------------------------------------------------------------------------------------:
 # Main Tableau Functions
 
 # Parse a formula, consult parseOutputs for return values.
-def parse(fmla) -> int:
+def parse(fmla: str) -> int:
     return 0
 
 # Return the LHS of a binary connective formula
-def lhs(fmla) -> str:
+def lhs(fmla: str) -> str:
     return ''
 
 # Return the connective symbol of a binary connective formula
-def con(fmla) -> str:
+def con(fmla: str) -> str:
     return ''
 
 # Return the RHS symbol of a binary connective formula
-def rhs(fmla) -> str:
+def rhs(fmla: str) -> str:
     return ''
 
 # You may choose to represent a theory as a set or a list
-def theory(fmla) -> list[str]:  # initialise a theory with a single formula in it
+def theory(fmla: str) -> list[str]:  # initialise a theory with a single formula in it
     return None
 
 #check for satisfiability
