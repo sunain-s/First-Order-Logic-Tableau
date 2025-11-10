@@ -117,7 +117,64 @@ print("================================\n\n")
 
 # Parse a formula, consult parseOutputs for return values.
 def parse(fmla: str) -> int:
-    return 0
+    if not fmla or not balanced_parentheses(fmla):
+        return 0 # not a formula
+    
+    if is_prop_atom(fmla):
+        return 6 # a proposition
+    
+    if is_fol_atom(fmla):
+        return 1 # an atom
+    
+    # Negation
+    if fmla[0] == '~':
+        subfmla = fmla[1:]
+        subfmla_parsed = parse(subfmla)
+        if subfmla_parsed == 0:
+            return 0 # not a formula
+        if subfmla_parsed in [6, 7, 8]:
+            return 7 # a negation of a propositional formula
+        elif subfmla_parsed in [1, 2, 3, 4, 5]:
+            return 2 # a negation of a first order logic formula
+        else:
+            return 0 # not a formula
+
+    # FOL Quantifiers
+    if len(fmla) > 2 and fmla[0] in ['A', 'E'] and fmla[1] in ['x', 'y', 'z', 'w']:
+        subfmla = fmla[2:]
+        subfmla_parsed = parse(subfmla)
+        if subfmla_parsed == 0:
+            return 0 # not a formula
+        if fmla[0] == 'A':
+            return 3 # a universally quantified formula
+        elif fmla[0] == 'E':
+            return 4 # an existentially quantified formula
+        else:
+            return 0 # not a formula
+        
+    # Binary Connectives
+    if fmla[0] == '(' and fmla[-1] == ')':
+        connective = con(fmla)
+        left = lhs(fmla)
+        right = rhs(fmla)
+
+        if not connective or not left or not right:
+            return 0 # not a formula
+
+        lparsed = parse(left)
+        rparsed = parse(right)
+        if lparsed == 0 or rparsed == 0:
+            return 0 # not a formula
+        
+        if lparsed in [6, 7, 8] and rparsed in [6, 7, 8]:
+            return 8 # a binary connective propositional formula
+        elif lparsed in [1, 2, 3, 4, 5] or rparsed in [1, 2, 3, 4, 5]:
+            return 5 # a binary connective first order formula
+        else:
+            return 0 # not a formula
+        
+    return 0 # not a formula
+        
 
 # Return the LHS of a binary connective formula
 def lhs(fmla: str) -> str:
