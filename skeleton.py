@@ -32,8 +32,8 @@ def main_connective(fmla: str) -> tuple[int|None, str|None]:
         elif char == ')':
             depth -= 1
 
-        # Only check for main connective when at depth 1 (highest level) and not immediately after '('
-        if depth == 1 and fmla[i - 1] != '(' and i > 0:
+        # Only check for main connective when at depth 1 (highest level)
+        if depth == 1:
             if char == '-' and i + 1 < len(fmla) and fmla[i+1] == '>':
                 return i, '->'
             if char == '\\' and i + 1 < len(fmla) and fmla[i+1] == '/':
@@ -121,15 +121,24 @@ def parse(fmla: str) -> int:
 
 # Return the LHS of a binary connective formula
 def lhs(fmla: str) -> str:
-    return ''
+    i, connective = main_connective(fmla)
+    if i is None or connective is None:
+        return ''
+    return fmla[1:i]
 
 # Return the connective symbol of a binary connective formula
 def con(fmla: str) -> str:
-    return ''
+    _, connective = main_connective(fmla)
+    if connective is None:
+        return ''
+    return connective
 
 # Return the RHS symbol of a binary connective formula
 def rhs(fmla: str) -> str:
-    return ''
+    i, connective = main_connective(fmla)
+    if i is None or connective is None:
+        return ''
+    return fmla[i+len(connective):-1]
 
 # You may choose to represent a theory as a set or a list
 def theory(fmla: str) -> list[str]:  # initialise a theory with a single formula in it
