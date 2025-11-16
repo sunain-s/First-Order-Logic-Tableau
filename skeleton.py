@@ -2,7 +2,7 @@
 MAX_CONSTANTS = 10
 
 #------------------------------------------------------------------------------------------------------------------------------:
-# Helper Functions
+# Parsing Functions
 
 def balanced_parentheses(fmla: str) -> bool:
     depth = 0
@@ -58,9 +58,8 @@ def is_fol_atom(f: str) -> bool:
         return False
     return True
 
-
 #------------------------------------------------------------------------------------------------------------------------------:
-# Testing
+# Parsing Testing
 
 def test_balanced_parentheses():
     assert balanced_parentheses('(P&Q)')
@@ -106,10 +105,70 @@ def test_is_fol_atom():
     assert not is_fol_atom('(P(x,y)&Q(z,w))')
     print("First-Order Logic Atom: All tests passed.\n")
 
-test_balanced_parentheses()
-test_main_connective()
-test_is_prop_atom()
-test_is_fol_atom()
+# test_balanced_parentheses()
+# test_main_connective()
+# test_is_prop_atom()
+# test_is_fol_atom()
+# print("================================\n\n")
+
+#------------------------------------------------------------------------------------------------------------------------------:
+# Satisfiability Helper Functions
+
+def is_literal(fmla: str) -> bool:
+    if is_fol_atom(fmla) or is_prop_atom(fmla):
+        return True
+    if fmla.startswith('~'):
+        subfmla = fmla[1:]
+        if is_fol_atom(subfmla) or is_prop_atom(subfmla):
+            return True
+    return False
+
+def branch_contradiction(branch: list[str]) -> bool:
+    for fmla in branch:
+        if fmla.startswith('~'):
+            if fmla[1:] in branch:
+                return True
+        else:
+            if ('~' + fmla) in branch:
+                return True
+    return False
+
+#------------------------------------------------------------------------------------------------------------------------------:
+# Satisfiability Testing
+
+def test_is_literal():
+    assert is_literal('p')
+    assert is_literal('q')
+    assert is_literal('P(x,y)')
+    assert is_literal('Q(w,x)')
+    assert is_literal('R(z,z)')
+    assert is_literal('~p')
+    assert is_literal('~s')
+    assert is_literal('~P(x,y)')
+    assert is_literal('~Q(w,w)')
+    assert is_literal('~Q(w,x)')
+    assert not is_literal('(p&q)')
+    assert not is_literal('~(p&q)')
+    assert not is_literal('AxP(x,x)')
+    assert not is_literal('(P(x,y)->Q(y,y))')
+    print("is_literal: All tests passed.\n")
+
+def test_branch_contradiction():
+    assert not branch_contradiction(['p'])
+    assert not branch_contradiction(['p', 'q'])
+    assert not branch_contradiction(['P(x,y)'])
+    assert not branch_contradiction(['P(x,y)', '~Q(x,x)'])
+    assert branch_contradiction(['p', '~p'])
+    assert branch_contradiction(['~p', 'p'])
+    assert branch_contradiction(['P(x,y)', '~P(x,y)'])
+    assert branch_contradiction(['~Q(z,z)', 'Q(z,z)'])
+    assert branch_contradiction(['p', '(p->q)', '~q', '~p'])
+    assert branch_contradiction(['P(x,y)', 'R(x,x)', '~R(x,x)'])
+    assert not branch_contradiction(['(p->q)', '~(q&r)'])
+    print("branch_contradiction: All tests passed.\n")
+
+test_is_literal()
+test_branch_contradiction()
 print("================================\n\n")
 
 #------------------------------------------------------------------------------------------------------------------------------:
@@ -174,7 +233,6 @@ def parse(fmla: str) -> int:
             return 0 # not a formula
         
     return 0 # not a formula
-        
 
 # Return the LHS of a binary connective formula
 def lhs(fmla: str) -> str:
@@ -199,7 +257,7 @@ def rhs(fmla: str) -> str:
 
 # You may choose to represent a theory as a set or a list
 def theory(fmla: str) -> list[str]:  # initialise a theory with a single formula in it
-    return None
+    return [fmla]
 
 #check for satisfiability
 def sat(tableau) -> int:
