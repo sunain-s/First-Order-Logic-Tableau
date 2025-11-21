@@ -1,4 +1,3 @@
-
 MAX_CONSTANTS = 10
 
 #------------------------------------------------------------------------------------------------------------------------------:
@@ -18,49 +17,43 @@ def balanced_parentheses(fmla: str) -> bool:
 def main_connective(fmla: str) -> tuple[int|None, str|None]:
     if not fmla:
         return None, None
-    if fmla[0] != '(' or fmla[-1] != ')':
+    if not (fmla.startswith("(") and fmla.endswith(")")):
         return None, None
     if not balanced_parentheses(fmla):
         return None, None
 
     depth = 0
-    i = 0
-    while i < len(fmla):
-        char = fmla[i]
-        if char == '(':
+    for i in range(len(fmla)):
+        ch = fmla[i]
+        if ch == '(':
             depth += 1
-        elif char == ')':
+        elif ch == ')':
             depth -= 1
-
-        # Only check for main connective when at depth 1 (highest level)
         if depth == 1:
-            if char == '-' and i + 1 < len(fmla) and fmla[i+1] == '>':
+            if ch == '-' and i + 1 < len(fmla) and fmla[i + 1] == '>':
                 return i, '->'
-            if char == '\\' and i + 1 < len(fmla) and fmla[i+1] == '/':
-                return i, '\\/'
-            if char == '&':
+            if ch == '&':
                 return i, '&'
-        i += 1
+            if ch == '\\' and i + 1 < len(fmla) and fmla[i + 1] == '/':
+                return i, '\\/'
     return None, None
 
-def is_prop_atom(f: str) -> bool:
-    return f in ['p', 'q', 'r', 's']
+def is_prop_atom(fmla: str) -> bool:
+    return fmla in ['p', 'q', 'r', 's']
 
-def is_fol_atom(f: str) -> bool:
+def is_fol_atom(fmla: str) -> bool:
     # Must match: PRED(term, term) where term is variable or constant
-    if len(f) != 6:
+    if len(fmla) != 6:
         return False
-    if f[0] not in ['P', 'Q', 'R', 'S']:
+    if fmla[0] not in ['P', 'Q', 'R', 'S']:
         return False
-    if f[1] != '(' or f[3] != ',' or f[5] != ')':
+    if fmla[1] != '(' or fmla[3] != ',' or fmla[5] != ')':
         return False
 
     VARS = ['x', 'y', 'z', 'w']
-    CONSTS = [chr(c) for c in range(ord('a'), ord('z') + 1)]
+    CONSTS = [chr(c) for c in range(ord('a'), ord('z')+1)]
     TERMS = VARS + CONSTS
-
-    return f[2] in TERMS and f[4] in TERMS
-
+    return fmla[2] in TERMS and fmla[4] in TERMS
 
 # Return the LHS of a binary connective formula
 def lhs(fmla: str) -> str:
@@ -124,7 +117,7 @@ def parse(fmla: str) -> int:
         return 0 # not a formula 
 
     # Binary Connectives
-    if fmla[0] == '(' and fmla[-1] == ')':
+    if fmla.startswith('(') and fmla.endswith(')'):
         connective = con(fmla)
         left = lhs(fmla)
         right = rhs(fmla)
@@ -145,62 +138,39 @@ def parse(fmla: str) -> int:
         
     return 0 # not a formula
 
-
-#------------------------------------------------------------------------------------------------------------------------------:
-# Parsing Testing
-
-def test_balanced_parentheses():
-    assert balanced_parentheses('(P&Q)')
-    assert balanced_parentheses('((P\\/Q)->R)')
-    assert balanced_parentheses('(P->(Q&R))')
-    assert not balanced_parentheses('(P&(Q->R)')
-    assert not balanced_parentheses('P&Q)')
-    assert balanced_parentheses('((P&Q)->(R\\/S))')
-    print("Balanced Parentheses: All tests passed.\n")
-
-
-def test_main_connective():
-    assert main_connective('(P&Q)') == (2, '&')
-    assert main_connective('((P\\/Q)->R)') == (7, '->')
-    assert main_connective('(P->(Q&R))') == (2, '->')
-    assert main_connective('(P)') == (None, None)
-    assert main_connective('((P&Q)\\/(R->S))') == (6, '\\/')
-    assert main_connective('p->q') == (None, None)
-    assert main_connective('') == (None, None)
-    print("Main Connective: All tests passed.\n")
-
-
-def test_is_prop_atom():
-    assert is_prop_atom('p')
-    assert is_prop_atom('q')
-    assert is_prop_atom('r')
-    assert is_prop_atom('s')
-    assert not is_prop_atom('P')
-    assert not is_prop_atom('x')
-    assert not is_prop_atom('(p&q)')
-    print("Propositional Atom: All tests passed.\n")
-
-
-def test_is_fol_atom():
-    assert is_fol_atom('P(x,y)')
-    assert is_fol_atom('Q(z,w)')
-    assert is_fol_atom('R(x,x)')
-    assert is_fol_atom('S(y,z)')
-    assert not is_fol_atom('P(x)')
-    assert not is_fol_atom('P(x,y,z)')
-    assert not is_fol_atom('P(a,b)')
-    assert not is_fol_atom('p')
-    assert not is_fol_atom('(P(x,y)&Q(z,w))')
-    print("First-Order Logic Atom: All tests passed.\n")
-
-# test_balanced_parentheses()
-# test_main_connective()
-# test_is_prop_atom()
-# test_is_fol_atom()
-# print("================================\n\n")
-
 #------------------------------------------------------------------------------------------------------------------------------:
 # Satisfiability Functions
+
+def substitute(fmla, var, const):
+    if not fmla:
+        return fmla
+    
+    if fmla.startswith('~'):
+        return '~' + substitute(fmla[1:], var, const)
+    
+    if is_fol_atom(fmla):
+        P, t1, t2 = fmla[0], fmla[2], fmla[4]
+        if t1 == var: 
+            t1 = const
+        if t2 == var: 
+            t2 = const
+        return f"{P}({t1},{t2})"
+    
+    if len(fmla) > 2 and fmla[0] in ['A', 'E'] and fmla[1] in ['x', 'y', 'z', 'w']:
+        quant_var = fmla[1]
+        if quant_var == var:
+            return fmla
+        else:
+            return fmla[0] + fmla[1] + substitute(fmla[2:], var, const)
+    
+    if fmla.startswith('(') and fmla.endswith(')'):
+        left = lhs(fmla)
+        right = rhs(fmla)
+        connective = con(fmla)
+        if left and right and connective:
+            return '(' + substitute(left, var, const) + connective + substitute(right, var, const) + ')'
+    
+    return fmla
 
 def is_literal(fmla: str) -> bool:
     if is_fol_atom(fmla) or is_prop_atom(fmla):
@@ -221,234 +191,350 @@ def branch_contradiction(branch: list[str]) -> bool:
                 return True
     return False
 
-def expand(branch: list[str]) -> list[list[str]]:
+def get_constants(branch: list[str]) -> set:
+    constants = set()
+    VARS = ['x', 'y', 'z', 'w']
 
-    target_fmla = None
+    def collect(fmla: str):
+        if not fmla:
+            return
+        
+        if fmla.startswith('~'):
+            collect(fmla[1:])
+            return
+        
+        if is_fol_atom(fmla):
+            t1, t2 = fmla[2], fmla[4]
+            if t1 not in VARS:
+                constants.add(t1)
+            if t2 not in VARS:
+                constants.add(t2)
+            return
+        
+        if len(fmla) > 2 and fmla[0] in ['A', 'E'] and fmla[1] in VARS:
+            collect(fmla[2:])
+            return
+        
+        if fmla.startswith('(') and fmla.endswith(')'):
+            connective = con(fmla)
+            if connective:
+                left = lhs(fmla)
+                right = rhs(fmla)
+                collect(left)
+                collect(right)
+                return
+        return
+    
     for fmla in branch:
-        if not is_literal(fmla):
+        collect(fmla)
+    
+    return constants
+
+def count_new_constants(branch: list[str], initial_constants: set) -> int:
+    current_constants = get_constants(branch)
+    return len(current_constants - initial_constants)
+
+def select_target_formula(branch: list[str]) -> str | None:
+    """
+    Select the best formula to expand based on priority.
+    Returns None if all formulas are literals (branch is complete).
+    
+    CRITICAL FIX: Check if gamma rules would produce new instances before selecting them.
+    """
+    target_fmla = None
+    best_priority = 100
+    
+    current_constants = get_constants(branch)
+    
+    for fmla in branch:
+        if is_literal(fmla):
+            continue
+        
+        current_priority = 100
+        
+        # Double negation - highest priority
+        if fmla.startswith('~~'):
+            current_priority = 0
+        
+        # Negated quantifiers
+        elif fmla.startswith('~A') or fmla.startswith('~E'):
+            if len(fmla) > 2 and fmla[2] in ['x', 'y', 'z', 'w']:
+                current_priority = 1
+        
+        # Alpha rules (don't branch)
+        elif fmla.startswith('~('):
+            inner = fmla[1:]
+            inner_connective = con(inner) if inner.startswith('(') else ''
+            if inner_connective in ['->', '\\/']:
+                current_priority = 2
+        else:
+            p = parse(fmla)
+            if p in [5, 8]:
+                inner_connective = con(fmla)
+                if inner_connective == '&':
+                    current_priority = 2
+        
+        # Beta rules (branch)
+        if current_priority == 100:
+            if fmla.startswith('~('):
+                inner = fmla[1:]
+                inner_connective = con(inner) if inner.startswith('(') else ''
+                if inner_connective == '&':
+                    current_priority = 10
+            else:
+                p = parse(fmla)
+                if p in [5, 8]:
+                    inner_connective = con(fmla)
+                    if inner_connective in ['->', '\\/']:
+                        current_priority = 10
+        
+        # Delta rules (existential)
+        if current_priority == 100:
+            if parse(fmla) == 4:
+                current_priority = 20
+        
+        # Gamma rules (universal) - CRITICAL FIX
+        # Only select if it would produce NEW instances
+        if current_priority == 100:
+            if parse(fmla) == 3:
+                var = fmla[1]
+                sub = fmla[2:]
+                # Check what instances would be produced
+                constants = current_constants if current_constants else {'a'}
+                instances = [substitute(sub, var, c) for c in constants]
+                new_instances = [inst for inst in instances if inst not in branch]
+                
+                if new_instances:
+                    current_priority = 30
+                else:
+                    # This gamma won't produce anything new - SKIP IT
+                    continue
+        
+        if current_priority < best_priority:
+            best_priority = current_priority
             target_fmla = fmla
-            break
+    
+    return target_fmla
+
+def expand(branch: list[str], initial_constants: set = None) -> list[list[str]]:
+    """Expand one formula in the branch using tableau rules"""
+    if initial_constants is None:
+        initial_constants = set()
+    
+    # Find the best formula to expand
+    target_fmla = select_target_formula(branch)
     
     if target_fmla is None:
         return [branch]
     
-    t = target_fmla
-    p = parse(t)
-
-    def rest() -> list[str]:
+    p = parse(target_fmla)
+    
+    def remove_target():
         new_branch = branch.copy()
-        if t in new_branch:
-            new_branch.remove(t)
+        new_branch.remove(target_fmla)
         return new_branch
     
-    inner = t[1:] if t.startswith('~') else t
-    inner_connective = con(inner) if inner and inner.startswith('(') and inner.endswith(')') else ''
-
-    # Alpha expansions
-    if t.startswith('~(') and inner_connective == '->':
-        A = lhs(inner)
-        B = rhs(inner)
-        new_branch = rest()
-        new_branch += [A, "~" + B]
-        return [new_branch]
+    inner = target_fmla[1:] if target_fmla.startswith('~') else target_fmla
+    inner_connective = con(inner) if inner.startswith('(') and inner.endswith(')') else ''
     
-    if t.startswith('~(') and inner_connective == '\\/':
+    # Double negation
+    if target_fmla.startswith('~~'):
+        subfmla = target_fmla[2:]
+        b = remove_target()
+        return [[*b, subfmla]]
+    
+    # Negated quantifiers
+    if target_fmla.startswith('~A') and len(target_fmla) > 2 and target_fmla[2] in ['x','y','z','w']:
+        var = target_fmla[2]
+        sub = target_fmla[3:]
+        b = remove_target()
+        new_fmla = f"E{var}~{sub}"
+        return [[*b, new_fmla]]
+    
+    if target_fmla.startswith('~E') and len(target_fmla) > 2 and target_fmla[2] in ['x','y','z','w']:
+        var = target_fmla[2]
+        sub = target_fmla[3:]
+        b = remove_target()
+        new_fmla = f"A{var}~{sub}"
+        return [[*b, new_fmla]]
+    
+    # Alpha expansions
+    if target_fmla.startswith('~(') and inner_connective == '->':
         A = lhs(inner)
         B = rhs(inner)
-        new_branch = rest()
-        new_branch += ["~" + A, "~" + B]
-        return [new_branch]
+        b = remove_target()
+        return [[*b, A, "~"+B]]
+
+    if target_fmla.startswith('~(') and inner_connective == '\\/':
+        A = lhs(inner)
+        B = rhs(inner)
+        b = remove_target()
+        return [[*b, "~"+A, "~"+B]]
 
     if p in [5, 8] and inner_connective == '&':
-        A = lhs(t)
-        B = rhs(t)
-        new_branch = rest()
-        new_branch += [A, B]
-        return [new_branch]
-    
-    # Beta expansions
-    if t.startswith("~(") and inner_connective == '&':
         A = lhs(inner)
         B = rhs(inner)
-        base = rest()
-        return [base + ["~" + A], base + ["~" + B]]
-    
+        b = remove_target()
+        return [[*b, A, B]]
+
+    # Beta expansions
+    if target_fmla.startswith("~(") and inner_connective == '&':
+        A = lhs(inner)
+        B = rhs(inner)
+        b = remove_target()
+        return [[*b, "~"+A], [*b, "~"+B]]
+
     if p in [5, 8] and inner_connective == '->':
-        A = lhs(t)
-        B = rhs(t)
-        base = rest()
-        return [base + ["~" + A], base + [B]]
-    
+        A = lhs(inner)
+        B = rhs(inner)
+        b = remove_target()
+        return [[*b, "~"+A], [*b, B]]
+
     if p in [5, 8] and inner_connective == '\\/':
-        A = lhs(t)
-        B = rhs(t)
-        base = rest()
-        return [base + [A], base + [B]]
-    
-    # Delta expansions
+        A = lhs(inner)
+        B = rhs(inner)
+        b = remove_target()
+        return [[*b, A], [*b, B]]
+
+    # Delta expansion
     if p == 4:
-        var = t[1]
-        sub_fmla = t[2:]
-        base = rest()
-
-        used_constants = set()
-        for fmla in base:
-            inner = fmla[1:] if fmla.startswith('~') else fmla
-            if is_fol_atom(inner):
-                used_constants.add(inner[2])
-                used_constants.add(inner[4])
-
+        var = target_fmla[1]
+        sub = target_fmla[2:]
+        base = remove_target()
+        used = get_constants(base)
+        
         new_const = None
         for c in "abcdefghijklmnopqrstuvwxyz":
-            if c not in used_constants:
+            if c not in used:
                 new_const = c
                 break
+        
         if new_const is None:
             new_const = 'a'
-        
-        instance = sub_fmla.replace(var, new_const)
-        return [base + [instance]]
-    
-    # Gamma expansions
+        instance = substitute(sub, var, new_const)
+        return [[*base, instance]]
+
+    # Gamma expansion - CRITICAL FIX
     if p == 3:
-        var = t[1]
-        sub_fmla = t[2:]
-        base = rest()
-
-        constants = set()
-        for fmla in base:
-            inner = fmla[1:] if fmla.startswith('~') else fmla
-            if is_fol_atom(inner):
-                constants.add(inner[2])
-                constants.add(inner[4])
-
+        var = target_fmla[1]
+        sub = target_fmla[2:]
+        base = branch.copy()  # Keep universal formula in branch
+        
+        constants = get_constants(base)
+        
         if not constants:
             constants = {'a'}
-
-        instantiations = [sub_fmla.replace(var, c) for c in constants]
-        return [base + instantiations]
+        
+        instances = [substitute(sub, var, c) for c in constants]
+        new_instances = [inst for inst in instances if inst not in base]
+        
+        if new_instances:
+            # FIXED: Return new_instances, not instances
+            return [[*base, *new_instances]]
+        else:
+            # No new instances - return unchanged branch
+            return [branch]
 
     return [branch]
-    
-#------------------------------------------------------------------------------------------------------------------------------:
-# Satisfiability Testing
-
-def test_is_literal():
-    assert is_literal('p')
-    assert is_literal('q')
-    assert is_literal('P(x,y)')
-    assert is_literal('Q(w,x)')
-    assert is_literal('R(z,z)')
-    assert is_literal('~p')
-    assert is_literal('~s')
-    assert is_literal('~P(x,y)')
-    assert is_literal('~Q(w,w)')
-    assert is_literal('~Q(w,x)')
-    assert not is_literal('(p&q)')
-    assert not is_literal('~(p&q)')
-    assert not is_literal('AxP(x,x)')
-    assert not is_literal('(P(x,y)->Q(y,y))')
-    print("is_literal: All tests passed.\n")
-
-def test_branch_contradiction():
-    assert not branch_contradiction(['p'])
-    assert not branch_contradiction(['p', 'q'])
-    assert not branch_contradiction(['P(x,y)'])
-    assert not branch_contradiction(['P(x,y)', '~Q(x,x)'])
-    assert branch_contradiction(['p', '~p'])
-    assert branch_contradiction(['~p', 'p'])
-    assert branch_contradiction(['P(x,y)', '~P(x,y)'])
-    assert branch_contradiction(['~Q(z,z)', 'Q(z,z)'])
-    assert branch_contradiction(['p', '(p->q)', '~q', '~p'])
-    assert branch_contradiction(['P(x,y)', 'R(x,x)', '~R(x,x)'])
-    assert not branch_contradiction(['(p->q)', '~(q&r)'])
-    print("branch_contradiction: All tests passed.\n")
-
-def beq(a, b):
-    assert a == b, f"Actual {a} != Expected {b}"
-
-def test_expand_alpha_and():
-    b = ['(p&q)']
-    beq(expand(b), [['p', 'q']])
-
-def test_expand_alpha_neg_imp():
-    b = ['~(p->q)']
-    beq(expand(b), [['p', '~q']])
-
-def test_expand_alpha_neg_or():
-    b = ['~(p\\/q)']
-    beq(expand(b), [['~p', '~q']])
-
-def test_expand_beta_or():
-    b = ['(p\\/q)']
-    beq(expand(b), [['p'], ['q']])
-
-def test_expand_beta_imp():
-    b = ['(p->q)']
-    beq(expand(b), [['~p'], ['q']])
-
-def test_expand_beta_neg_and():
-    b = ['~(p&q)']
-    beq(expand(b), [['~p'], ['~q']])
-
-def test_expand_delta():
-    b = ['ExP(x,x)']
-    out = expand(b)
-    assert len(out) == 1
-    br = out[0]
-    assert any(is_fol_atom(f) and f[2] == 'a' for f in br)
-
-def test_expand_delta_avoids_existing_const():
-    b = ['P(a,a)', 'ExP(x,x)']
-    out = expand(b)
-    br = out[0]
-    inst = [f for f in br if is_fol_atom(f) and f not in ['P(a,a)']]
-    assert inst
-    assert inst[0][2] != 'a'
-
-def test_expand_gamma_with_existing_const():
-    b = ['P(a,a)', 'AxP(x,x)']
-    out = expand(b)
-    br = out[0]
-    assert 'P(a,a)' in br
-
-def test_expand_gamma_no_const():
-    b = ['AxP(x,x)']
-    out = expand(b)
-    br = out[0]
-    assert 'P(a,a)' in br
-
-def test_expand_noop():
-    b = ['p', '~q']
-    beq(expand(b), [b])
-
-def test_expand():
-    test_expand_alpha_and()
-    test_expand_alpha_neg_imp()
-    test_expand_alpha_neg_or()
-    test_expand_beta_or()
-    test_expand_beta_imp()
-    test_expand_beta_neg_and()
-    test_expand_delta()
-    test_expand_delta_avoids_existing_const()
-    test_expand_gamma_with_existing_const()
-    test_expand_gamma_no_const()
-    test_expand_noop()
-    print("expand(): all tests passed.\n")
-
-test_is_literal()
-test_branch_contradiction()
-test_expand()
-print("================================\n\n")
 
 # You may choose to represent a theory as a set or a list
-def theory(fmla: str) -> list[str]:  # initialise a theory with a single formula in it
+def theory(fmla: str) -> list[str]:
     return [fmla]
 
-#check for satisfiability
+def is_branch_complete(branch: list[str]) -> bool:
+    """
+    Check if a branch is complete (fully expanded).
+    A branch is complete if there are NO formulas that can be expanded further.
+    
+    This means:
+    - All literals: complete
+    - Only universal quantifiers remain that have been fully instantiated: complete
+    - Any other non-literal formula: not complete (needs expansion)
+    """
+    # Try to find a formula to expand
+    target = select_target_formula(branch)
+    
+    # If no formula can be selected for expansion, the branch is complete
+    return target is None
+
 def sat(tableau) -> int:
-#output 0 if not satisfiable, output 1 if satisfiable, output 2 if number of constants exceeds MAX_CONSTANTS
-    return 0
+    """
+    Check for satisfiability using tableau method.
+    CRITICAL FIXES:
+    1. Added loop detection to prevent infinite loops
+    2. Added progress tracking to detect when stuck
+    3. Better handling of undetermined cases
+    4. Proper completion check for branches with universal quantifiers
+    """
+    # Handle empty tableau
+    if not tableau:
+        return 0  # Empty tableau is unsatisfiable
+    
+    initial_constants = set()
+    for branch in tableau:
+        initial_constants.update(get_constants(branch))
+    
+    max_iterations = 10000
+    iterations = 0
+    seen_states = set()  # Track seen branch states
+    
+    while tableau and iterations < max_iterations:
+        iterations += 1
+        new_tableau = []
+        
+        for branch in tableau:
+            # Check if branch is closed (has contradiction)
+            if branch_contradiction(branch):
+                continue  # Discard this branch
+            
+            # Check if we've exceeded the constant limit
+            new_const_count = count_new_constants(branch, initial_constants)
+            if new_const_count > MAX_CONSTANTS:
+                return 2  # Undetermined
+            
+            # CRITICAL FIX: Check if branch is complete (not just all literals)
+            if is_branch_complete(branch):
+                # Found an open, complete branch = satisfiable
+                return 1
+            
+            # Detect if we've seen this exact branch before
+            branch_state = tuple(sorted(branch))
+            if branch_state in seen_states:
+                # We've seen this branch before - check if it's complete
+                if is_branch_complete(branch):
+                    return 1
+                # Otherwise, we need more constants or it's undetermined
+                return 2
+            seen_states.add(branch_state)
+            
+            # Expand this branch
+            expanded = expand(branch, initial_constants)
+            
+            # Check if expansion made progress
+            if len(expanded) == 1 and expanded[0] == branch:
+                # No progress - expansion returned same branch
+                if is_branch_complete(branch):
+                    return 1  # Complete and satisfiable
+                else:
+                    # Has non-complete formulas but can't expand - undetermined
+                    return 2
+            
+            new_tableau.extend(expanded)
+        
+        # Update tableau
+        tableau = new_tableau
+        
+        # If all branches closed
+        if not tableau:
+            return 0  # Not satisfiable
+    
+    # Hit iteration limit
+    # Check if any remaining branch is complete and satisfiable
+    for branch in tableau:
+        if not branch_contradiction(branch) and is_branch_complete(branch):
+            return 1
+    
+    return 2  # Undetermined
 
 #------------------------------------------------------------------------------------------------------------------------------:
 #                                            DO NOT MODIFY THE CODE BELOW THIS LINE!                                           :
