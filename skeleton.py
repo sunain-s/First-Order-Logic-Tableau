@@ -83,6 +83,8 @@ def parse(fmla: str) -> int:
     '''Parse the formula and return its output index'''
     if not fmla:
         return 0 # not a formula
+    if ' ' in fmla or '\t' in fmla or '\n' in fmla:
+        return 0 # not a formula
     if is_prop_atom(fmla):
         return 6 # a proposition
     if is_fol_atom(fmla):
