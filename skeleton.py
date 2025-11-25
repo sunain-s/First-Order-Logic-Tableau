@@ -1,9 +1,42 @@
 MAX_CONSTANTS = 10
 
+class TableauBranch:
+    '''Represents a branch in the tableau with its formulas and applied gamma instances'''
+
+    def __init__(self, formulas, gamma_instances=None):
+        self.formulas = formulas
+        # Key: gamma formula, Value: set of constants instantiated with
+        self.gamma_instances = gamma_instances if gamma_instances else {}
+    
+    def copy(self):
+        return TableauBranch(self.formulas.copy(),
+                             {k: v.copy() for k, v in self.gamma_instances.items()}
+                            )
+    
+    def add_formula(self, fmla):
+        if fmla not in self.formulas:
+            self.formulas.append(fmla)
+    
+    def remove_formula(self, fmla):
+        if fmla in self.formulas:
+            self.formulas.remove(fmla)
+    
+    def has_gamma_instance(self, gamma_fmla, const):
+        '''Check if we already instantiated this gamma formula with this constant'''
+        if gamma_fmla not in self.gamma_instances:
+            return False
+        return const in self.gamma_instances[gamma_fmla]
+    
+    def add_gamma_instance(self, gamma_fmla, const):
+        '''Record that we instantiated this gamma formula with this constant'''
+        if gamma_fmla not in self.gamma_instances:
+            self.gamma_instances[gamma_fmla] = set()
+        self.gamma_instances[gamma_fmla].add(const)
+
 #------------------------------------------------------------------------------------------------------------------------------:
 # Parsing Functions
 
-def balanced_parentheses(fmla: str) -> bool:
+def balanced_parentheses(fmla):
     '''Check if parentheses in the formula are balanced'''
     depth = 0
     for char in fmla:
@@ -15,7 +48,7 @@ def balanced_parentheses(fmla: str) -> bool:
                 return False
     return depth == 0
 
-def main_connective(fmla: str) -> tuple[int|None, str|None]:
+def main_connective(fmla):
     '''Return index and type of the main connective of the formula'''
     if not fmla:
         return None, None
@@ -40,11 +73,11 @@ def main_connective(fmla: str) -> tuple[int|None, str|None]:
                 return i, '\\/'
     return None, None
 
-def is_prop_atom(fmla: str) -> bool:
+def is_prop_atom(fmla):
     '''Must be one of {p, q, r, s}'''
     return fmla in ['p', 'q', 'r', 's']
 
-def is_fol_atom(fmla: str) -> bool:
+def is_fol_atom(fmla):
     '''Must match pattern P(t1,t2) where P in {P, Q, R, S} and t1,t2 are terms'''
     if len(fmla) != 6:
         return False
@@ -58,28 +91,28 @@ def is_fol_atom(fmla: str) -> bool:
     TERMS = VARS + CONSTS
     return fmla[2] in TERMS and fmla[4] in TERMS
 
-def lhs(fmla: str) -> str:
+def lhs(fmla):
     '''Return left hand side of the main connective'''
     i, connective = main_connective(fmla)
     if i is None or connective is None:
         return ''
     return fmla[1:i]
 
-def con(fmla: str) -> str:
+def con(fmla):
     '''Return the main connective of the formula'''
     _, connective = main_connective(fmla)
     if connective is None:
         return ''
     return connective
 
-def rhs(fmla: str) -> str:
+def rhs(fmla):
     '''Return right hand side of the main connective'''
     i, connective = main_connective(fmla)
     if i is None or connective is None:
         return ''
     return fmla[i+len(connective):-1]
 
-def parse(fmla: str) -> int:
+def parse(fmla):
     '''Parse the formula and return its output index'''
     if not fmla:
         return 0 # not a formula
@@ -140,7 +173,7 @@ def parse(fmla: str) -> int:
 #------------------------------------------------------------------------------------------------------------------------------:
 # Tableau Implementation
 
-def is_literal(fmla: str) -> bool:
+def is_literal(fmla):
     '''Check if a formula is a literal (atom or negated atom)'''
     if is_fol_atom(fmla) or is_prop_atom(fmla):
         return True
@@ -150,7 +183,7 @@ def is_literal(fmla: str) -> bool:
             return True
     return False
 
-def has_contradiction(formulas: list[str]) -> bool:
+def has_contradiction(formulas):
     '''Check for a contradiction in the branch list'''
     for fmla in formulas:
         if fmla.startswith('~'):
@@ -161,13 +194,13 @@ def has_contradiction(formulas: list[str]) -> bool:
                 return True
     return False
 
-def get_constants(branch: list[str]) -> set:
+def get_constants(branch):
     '''Recursively collect all constants in the branch'''
     constants = set()
     VARS = ['x', 'y', 'z', 'w']
 
     # Recursively enter formula and collect constants
-    def collect(fmla: str):
+    def collect(fmla):
         if not fmla:
             return
         
@@ -201,7 +234,7 @@ def get_constants(branch: list[str]) -> set:
         collect(fmla)
     return constants
 
-def substitute(fmla: str, var: str, const: str) -> str:
+def substitute(fmla, var, const):
     '''Substitute all free occurrences of var with const in fmla'''
     if not fmla:
         return fmla
@@ -232,40 +265,7 @@ def substitute(fmla: str, var: str, const: str) -> str:
             return '(' + substitute(left, var, const) + connective + substitute(right, var, const) + ')'
     return fmla
 
-class TableauBranch:
-    '''Represents a branch in the tableau with its formulas and applied gamma instances'''
-
-    def __init__(self, formulas: list[str], gamma_instances: dict = None):
-        self.formulas = formulas
-        # Key: gamma formula, Value: set of constants instantiated with
-        self.gamma_instances = gamma_instances if gamma_instances else {}
-    
-    def copy(self):
-        return TableauBranch(self.formulas.copy(),
-                             {k: v.copy() for k, v in self.gamma_instances.items()}
-                             )
-    
-    def add_formula(self, fmla: str):
-        if fmla not in self.formulas:
-            self.formulas.append(fmla)
-    
-    def remove_formula(self, fmla: str):
-        if fmla in self.formulas:
-            self.formulas.remove(fmla)
-    
-    def has_gamma_instance(self, gamma_fmla: str, const: str) -> bool:
-        '''Check if we already instantiated this gamma formula with this constant'''
-        if gamma_fmla not in self.gamma_instances:
-            return False
-        return const in self.gamma_instances[gamma_fmla]
-    
-    def add_gamma_instance(self, gamma_fmla: str, const: str):
-        '''Record that we instantiated this gamma formula with this constant'''
-        if gamma_fmla not in self.gamma_instances:
-            self.gamma_instances[gamma_fmla] = set()
-        self.gamma_instances[gamma_fmla].add(const)
-
-def select_target_formula(branch: TableauBranch) -> str | None:
+def select_target_formula(branch):
     '''Find the next formula to expand, priority: double negation > negated quantifiers > alpha > beta > delta > gamma'''
     target = None
     priority = 1000 # lower number = higher priority
@@ -327,7 +327,7 @@ def select_target_formula(branch: TableauBranch) -> str | None:
             target = fmla
     return target
 
-def expand_tableau(branch: TableauBranch) -> list[TableauBranch]:
+def expand_tableau(branch):
     '''Expand a formula in the branch'''
     target = select_target_formula(branch)
     if target is None:
@@ -358,10 +358,10 @@ def expand_tableau(branch: TableauBranch) -> list[TableauBranch]:
         new_branch.add_formula(f"A{var}~{sub}")
         return [new_branch]
 
-    # Alpha expansions
     inner = target[1:] if target.startswith('~') else target
     conn = con(inner) if inner.startswith('(') and inner.endswith(')') else ''
 
+    # Alpha expansions
     if target.startswith('~(') and conn == '->':
         new_branch = branch.copy()
         new_branch.remove_formula(target)
@@ -441,10 +441,10 @@ def expand_tableau(branch: TableauBranch) -> list[TableauBranch]:
         return [new_branch]
     return [branch]
 
-def theory(fmla: str) -> list[str]:
+def theory(fmla):
     return [fmla]
 
-def sat(tableau) -> int:
+def sat(tableau):
     '''Determine satisfiability of a formula using tableau method'''
     if not tableau:
         return 0 # is not satisfiable
@@ -454,19 +454,17 @@ def sat(tableau) -> int:
     for branch in branches:
         initial_constants.update(get_constants(branch.formulas))
     
-    max_iterations = 10000
+    max_iterations = 1000
     iterations = 0
     while branches and iterations < max_iterations:
         iterations += 1
         new_branches = []
         for branch in branches:
             if has_contradiction(branch.formulas):
-                continue  # Closed branch
+                continue # Closed branch
 
-            # Can change this to remove initial constants?
             current_constants = get_constants(branch.formulas)
-            new_const_count = len(current_constants - initial_constants)
-            if new_const_count > MAX_CONSTANTS:
+            if len(current_constants) > MAX_CONSTANTS:
                 return 2 # may or may not be satisfiable
             
             expanded = expand_tableau(branch)
