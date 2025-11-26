@@ -447,65 +447,51 @@ def theory(fmla):
 def sat(tableau):
     '''Determine satisfiability of a formula using tableau method'''
     if not tableau:
-        return 0 # is not satisfiable
-    
+        return 0  # is not satisfiable
+
     branches = [TableauBranch(branch) for branch in tableau]
-    initial_constants = set()
-    for branch in branches:
-        initial_constants.update(get_constants(branch.formulas))
-    
-    max_iterations = 1000
-    iterations = 0
-    while branches and iterations < max_iterations:
-        iterations += 1
+
+    while True:
         new_branches = []
+        progress_made = False
+
         for branch in branches:
             if has_contradiction(branch.formulas):
-                continue # Closed branch
+                continue
 
-            current_constants = get_constants(branch.formulas)
-            if len(current_constants) > MAX_CONSTANTS:
+            current = get_constants(branch.formulas)
+            if len(current) > MAX_CONSTANTS:
                 return 2 # may or may not be satisfiable
-            
+
             expanded = expand_tableau(branch)
             if len(expanded) == 1 and expanded[0].formulas == branch.formulas:
-                # Check if truly complete - all literals or only gamma with all instances
-                all_expandable_done = True
-                for fmla in branch.formulas:
-                    if not is_literal(fmla):
-                        if parse(fmla) == 3:
-                            constants = get_constants(branch.formulas)
-                            if not constants:
-                                constants = {'a'}
-                            var = fmla[1]
-                            sub = fmla[2:]
+                saturated = True
+                for f in branch.formulas:
+                    if not is_literal(f):
+                        if parse(f) == 3:
+                            constants = current or {'a'}
+                            var, sub = f[1], f[2:]
                             for c in constants:
-                                inst = substitute(sub, var, c)
-                                if inst not in branch.formulas:
-                                    all_expandable_done = False
+                                if substitute(sub, var, c) not in branch.formulas:
+                                    saturated = False
                                     break
                         else:
-                            all_expandable_done = False
+                            saturated = False
                             break
-                if all_expandable_done:
+                if saturated:
                     return 1 # is satisfiable
+            else:
+                progress_made = True
+
             new_branches.extend(expanded)
-        branches = new_branches
-        if not branches:
+
+        if not new_branches:
             return 0 # is not satisfiable
-    
-    # Timeout reached
-    # Check if any branches are not closed
-    for branch in branches:
-        if not has_contradiction(branch.formulas):
-            all_literals_or_gamma = True
-            for fmla in branch.formulas:
-                if not is_literal(fmla) and parse(fmla) != 3:
-                    all_literals_or_gamma = False
-                    break
-            if all_literals_or_gamma:
-                return 1 # is satisfiable
-    return 2 # may or may not be satisfiable
+        
+        if not progress_made:
+            return 1 # is satisfiable
+
+        branches = new_branches
 
 #------------------------------------------------------------------------------------------------------------------------------:
 #                                            DO NOT MODIFY THE CODE BELOW THIS LINE!                                           :
