@@ -2,7 +2,7 @@
 # Run this file to test your tableau implementation before submission
 
 # Import all functions from tableau.py
-from skeleton import *
+from tableau import *
 
 # Color codes for better output visibility
 class Color:

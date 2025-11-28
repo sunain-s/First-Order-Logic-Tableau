@@ -453,7 +453,7 @@ def sat(tableau):
 
     while True:
         new_branches = []
-        progress_made = False
+        made_progress = False
 
         for branch in branches:
             if has_contradiction(branch.formulas):
@@ -465,7 +465,7 @@ def sat(tableau):
 
             expanded = expand_tableau(branch)
             if len(expanded) == 1 and expanded[0].formulas == branch.formulas:
-                saturated = True
+                branch_complete = True 
                 for f in branch.formulas:
                     if not is_literal(f):
                         if parse(f) == 3:
@@ -473,22 +473,22 @@ def sat(tableau):
                             var, sub = f[1], f[2:]
                             for c in constants:
                                 if substitute(sub, var, c) not in branch.formulas:
-                                    saturated = False
+                                    branch_complete = False
                                     break
                         else:
-                            saturated = False
+                            branch_complete = False
                             break
-                if saturated:
+                if branch_complete:
                     return 1 # is satisfiable
             else:
-                progress_made = True
+                made_progress = True
 
             new_branches.extend(expanded)
 
         if not new_branches:
             return 0 # is not satisfiable
         
-        if not progress_made:
+        if not made_progress:
             return 1 # is satisfiable
 
         branches = new_branches
